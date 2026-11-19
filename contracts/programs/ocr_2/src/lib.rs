@@ -657,6 +657,10 @@ pub mod ocr_2 {
     pub fn claim_oracle_rewards(ctx: Context<ClaimOracleRewards>) -> Result<()> {
         rewards::claim_oracle_rewards(ctx)
     }
+
+    pub fn sweep_reward_dust(ctx: Context<SweepRewardDust>) -> Result<()> {
+        rewards::sweep_reward_dust(ctx)
+    }
 }
 
 fn pay_oracles_impl<'info>(

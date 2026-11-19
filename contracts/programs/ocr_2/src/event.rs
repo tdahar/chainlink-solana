@@ -113,3 +113,10 @@ pub struct OracleRewardsClaimed {
     pub payee: Pubkey,
     pub amount_gjuels: u64,
 }
+
+#[event]
+pub struct RewardDustSwept {
+    pub aggregator: Pubkey,
+    pub recipient: Pubkey,
+    pub amount_gjuels: u64,
+}

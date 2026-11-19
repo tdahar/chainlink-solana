@@ -272,3 +272,32 @@ impl<'info> ClaimOracleRewards<'info> {
         )
     }
 }
+
+#[derive(Accounts)]
+pub struct SweepRewardDust<'info> {
+    #[account(seeds = [REWARD_POOL_SEED, pool.aggregator.as_ref()], bump = pool.bump)]
+    pub pool: Box<Account<'info, RewardPool>>,
+    #[account(address = pool.admin @ ErrorCode::Unauthorized)]
+    pub authority: Signer<'info>,
+    #[account(mut, token::mint = pool.token_mint)]
+    pub recipient: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = pool.token_vault)]
+    pub token_vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: This is a PDA
+    #[account(seeds = [REWARD_VAULT_SEED, pool.key().as_ref()], bump = pool.vault_authority_bump)]
+    pub vault_authority: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info> SweepRewardDust<'info> {
+    pub fn transfer_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.token_vault.to_account_info(),
+                to: self.recipient.to_account_info(),
+                authority: self.vault_authority.to_account_info(),
+            },
+        )
+    }
+}

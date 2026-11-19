@@ -57,5 +57,14 @@ unallocated   = total_deposited - total_allocated - total_withdrawn
 distributable = unallocated - total_pending_withdrawal
 ```
 
+## Maintenance
+
+- `sweep_reward_dust` (pool admin) sends to a token account of the admin's choice the vault tokens the
+  pool does not account for, i.e. tokens transferred to the vault directly instead of through
+  `deposit_rewards`. Sponsor deposits, including pending withdrawals, and rewards owed to oracles are
+  never swept.
+- `rewards::query::pending_oracle_rewards` returns what an oracle could claim right now, counting the
+  rounds not distributed yet, without changing any account.
+
 Deposits are pooled: a sponsor's withdrawable amount is bounded by the pool's unallocated balance,
 not by which sponsor's tokens were released to oracles.

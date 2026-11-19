@@ -507,3 +507,111 @@ pub fn claim_oracle_rewards(ctx: Context<ClaimOracleRewards>) -> Result<()> {
     )?;
     Ok(())
 }
+
+// -- Maintenance
+
+/// Sends to `recipient` the vault tokens the pool does not account for: tokens transferred to the
+/// vault directly instead of through `deposit_rewards`, which would otherwise be stuck.
+pub fn sweep_reward_dust(ctx: Context<SweepRewardDust>) -> Result<()> {
+    let balance_gjuels = ctx.accounts.token_vault.amount;
+
+    let dust_gjuels = {
+        let pool = &ctx.accounts.pool;
+        // Rewards released to oracles and not claimed yet must stay in the vault.
+        let owed_gjuels = pool
+            .total_allocated_gjuels
+            .checked_sub(pool.total_claimed_gjuels)
+            .ok_or(ErrorCode::Overflow)?;
+        balance_gjuels.saturating_sub(owed_gjuels)
+    };
+    if dust_gjuels == 0 {
+        return Ok(());
+    }
+
+    emit!(event::RewardDustSwept {
+        aggregator: ctx.accounts.pool.aggregator,
+        recipient: ctx.accounts.recipient.key(),
+        amount_gjuels: dust_gjuels,
+    });
+
+    let pool_key = ctx.accounts.pool.key();
+    let vault_authority_bump = ctx.accounts.pool.vault_authority_bump;
+    token::transfer(
+        ctx.accounts.transfer_ctx().with_signer(&[&[
+            REWARD_VAULT_SEED,
+            pool_key.as_ref(),
+            &[vault_authority_bump],
+        ]]),
+        dust_gjuels,
+    )?;
+    Ok(())
+}
+
+pub mod query {
+    use super::*;
+
+    #[account]
+    pub struct PendingOracleRewards {
+        /// Rewards the oracle could claim right now, including rounds not distributed yet.
+        pub claimable_gjuels: u64,
+        /// Rounds transmitted since the last distribution.
+        pub undistributed_rounds: u32,
+    }
+
+    // https://github.com/coral-xyz/anchor/pull/2770
+    macro_rules! try_from {
+        ($ty: ty, $acc: expr) => {{
+            let acc_ref = $acc.as_ref();
+            <$ty>::try_from(unsafe {
+                core::mem::transmute::<&AccountInfo<'_>, &AccountInfo<'_>>(acc_ref)
+            })
+        }};
+    }
+
+    /// Returns what `record`'s oracle could claim if `distribute_rewards` ran now, without
+    /// changing any account.
+    pub fn pending_oracle_rewards(
+        state: &AccountInfo,
+        pool: &AccountInfo,
+        record: &AccountInfo,
+    ) -> Result<PendingOracleRewards> {
+        let pool = try_from!(Account<RewardPool>, pool)?;
+        let record = try_from!(Account<OracleRewardRecord>, record)?;
+        require_keys_eq!(record.pool, pool.key(), ErrorCode::InvalidInput);
+        require_keys_eq!(pool.aggregator, state.key(), ErrorCode::InvalidInput);
+
+        let loader = try_from!(AccountLoader<State>, state)?;
+        let latest_round_id = loader.load()?.config.latest_aggregator_round_id;
+        let undistributed_rounds = latest_round_id
+            .checked_sub(pool.last_distributed_round_id)
+            .ok_or(ErrorCode::Overflow)?;
+
+        let mut acc = pool.acc_reward_per_oracle;
+        if !pool.paused {
+            let distribution = math::distribution(
+                pool.reward_per_round_gjuels,
+                undistributed_rounds,
+                pool.registered_oracles,
+                pool.distributable_gjuels().ok_or(ErrorCode::Overflow)?,
+            )
+            .ok_or(ErrorCode::Overflow)?;
+            acc = acc
+                .checked_add(distribution.acc_increase)
+                .ok_or(ErrorCode::Overflow)?;
+        }
+
+        let mut claimable_gjuels = record.accrued_gjuels;
+        if record.active {
+            let pending =
+                math::pending_reward(acc, record.reward_debt).ok_or(ErrorCode::Overflow)?;
+            claimable_gjuels = claimable_gjuels
+                .checked_add(pending)
+                .ok_or(ErrorCode::Overflow)?;
+        }
+
+        Ok(PendingOracleRewards {
+            claimable_gjuels,
+            undistributed_rounds,
+        })
+    }
+}
