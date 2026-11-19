@@ -35,3 +35,81 @@ pub struct NewTransmission {
     pub juels_per_lamport: u64,
     pub reimbursement_gjuels: u64,
 }
+
+// -- Reward pool
+
+#[event]
+pub struct RewardPoolInitialized {
+    pub aggregator: Pubkey,
+    pub pool: Pubkey,
+    pub admin: Pubkey,
+    pub reward_per_round_gjuels: u64,
+    pub withdrawal_delay_secs: i64,
+}
+
+#[event]
+pub struct RewardRateSet {
+    pub aggregator: Pubkey,
+    pub reward_per_round_gjuels: u64,
+}
+
+#[event]
+pub struct RewardsDistributed {
+    pub aggregator: Pubkey,
+    pub round_id: u32,
+    pub rounds: u32,
+    pub registered_oracles: u32,
+    pub allocated_gjuels: u64,
+}
+
+#[event]
+pub struct RewardsDeposited {
+    pub aggregator: Pubkey,
+    pub sponsor: Pubkey,
+    pub amount_gjuels: u64,
+}
+
+#[event]
+pub struct SponsorWithdrawalRequested {
+    pub aggregator: Pubkey,
+    pub sponsor: Pubkey,
+    pub amount_gjuels: u64,
+    pub unlock_ts: i64,
+}
+
+#[event]
+pub struct SponsorWithdrawalCancelled {
+    pub aggregator: Pubkey,
+    pub sponsor: Pubkey,
+    pub amount_gjuels: u64,
+}
+
+#[event]
+pub struct SponsorWithdrawn {
+    pub aggregator: Pubkey,
+    pub sponsor: Pubkey,
+    pub recipient: Pubkey,
+    pub amount_gjuels: u64,
+}
+
+#[event]
+pub struct OracleRegistered {
+    pub aggregator: Pubkey,
+    pub transmitter: Pubkey,
+    pub payee: Pubkey,
+}
+
+#[event]
+pub struct OracleDeregistered {
+    pub aggregator: Pubkey,
+    pub transmitter: Pubkey,
+    pub accrued_gjuels: u64,
+}
+
+#[event]
+pub struct OracleRewardsClaimed {
+    pub aggregator: Pubkey,
+    pub transmitter: Pubkey,
+    pub payee: Pubkey,
+    pub amount_gjuels: u64,
+}
