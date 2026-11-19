@@ -9,9 +9,11 @@ declare_id!("E3j24rx12SyVsG6quKuZPbQqZPkhAUCh8Uek4XrKYD2x");
 
 mod context;
 pub mod event;
+pub mod rewards;
 mod state;
 
 use crate::context::*;
+use crate::rewards::context::*;
 use crate::state::{Config, Oracle, SigningKey, State, DIGEST_SIZE, MAX_ORACLES};
 
 use std::collections::BTreeSet;
@@ -573,6 +575,92 @@ pub mod ocr_2 {
         oracle.payee = std::mem::take(&mut oracle.proposed_payee);
         Ok(())
     }
+
+    // -- Reward pool (see rewards module)
+
+    pub fn init_reward_pool(
+        ctx: Context<InitRewardPool>,
+        reward_per_round_gjuels: u64,
+        withdrawal_delay_secs: i64,
+    ) -> Result<()> {
+        rewards::init_reward_pool(ctx, reward_per_round_gjuels, withdrawal_delay_secs)
+    }
+
+    pub fn set_reward_rate(
+        ctx: Context<ConfigureRewardPool>,
+        reward_per_round_gjuels: u64,
+    ) -> Result<()> {
+        rewards::set_reward_rate(ctx, reward_per_round_gjuels)
+    }
+
+    pub fn set_reward_pool_paused(ctx: Context<ConfigureRewardPool>, paused: bool) -> Result<()> {
+        rewards::set_reward_pool_paused(ctx, paused)
+    }
+
+    pub fn set_withdrawal_delay(
+        ctx: Context<UpdateRewardPool>,
+        withdrawal_delay_secs: i64,
+    ) -> Result<()> {
+        rewards::set_withdrawal_delay(ctx, withdrawal_delay_secs)
+    }
+
+    pub fn transfer_reward_pool_admin(
+        ctx: Context<UpdateRewardPool>,
+        proposed_admin: Pubkey,
+    ) -> Result<()> {
+        rewards::transfer_reward_pool_admin(ctx, proposed_admin)
+    }
+
+    pub fn accept_reward_pool_admin(ctx: Context<AcceptRewardPoolAdmin>) -> Result<()> {
+        rewards::accept_reward_pool_admin(ctx)
+    }
+
+    pub fn distribute_rewards(ctx: Context<DistributeRewards>) -> Result<()> {
+        rewards::distribute_rewards(ctx)
+    }
+
+    pub fn open_sponsor_position(ctx: Context<OpenSponsorPosition>) -> Result<()> {
+        rewards::open_sponsor_position(ctx)
+    }
+
+    pub fn deposit_rewards(ctx: Context<DepositRewards>, amount_gjuels: u64) -> Result<()> {
+        rewards::deposit_rewards(ctx, amount_gjuels)
+    }
+
+    pub fn request_sponsor_withdrawal(
+        ctx: Context<UpdateSponsorWithdrawal>,
+        amount_gjuels: u64,
+    ) -> Result<()> {
+        rewards::request_sponsor_withdrawal(ctx, amount_gjuels)
+    }
+
+    pub fn cancel_sponsor_withdrawal(ctx: Context<UpdateSponsorWithdrawal>) -> Result<()> {
+        rewards::cancel_sponsor_withdrawal(ctx)
+    }
+
+    pub fn execute_sponsor_withdrawal(ctx: Context<ExecuteSponsorWithdrawal>) -> Result<()> {
+        rewards::execute_sponsor_withdrawal(ctx)
+    }
+
+    pub fn register_oracle(ctx: Context<RegisterOracle>) -> Result<()> {
+        rewards::register_oracle(ctx)
+    }
+
+    pub fn reactivate_oracle(ctx: Context<ReactivateOracle>) -> Result<()> {
+        rewards::reactivate_oracle(ctx)
+    }
+
+    pub fn deregister_oracle(ctx: Context<DeregisterOracle>) -> Result<()> {
+        rewards::deregister_oracle(ctx)
+    }
+
+    pub fn claim_oracle_rewards(ctx: Context<ClaimOracleRewards>) -> Result<()> {
+        rewards::claim_oracle_rewards(ctx)
+    }
+
+    pub fn sweep_reward_dust(ctx: Context<SweepRewardDust>) -> Result<()> {
+        rewards::sweep_reward_dust(ctx)
+    }
 }
 
 fn pay_oracles_impl<'info>(
@@ -1053,6 +1141,30 @@ pub enum ErrorCode {
 
     #[msg("Oracle transmitter key not found")]
     UnauthorizedTransmitter,
+
+    #[msg("Invalid withdrawal delay")]
+    InvalidWithdrawalDelay,
+
+    #[msg("A withdrawal is already pending")]
+    WithdrawalPending,
+
+    #[msg("No pending withdrawal")]
+    NoPendingWithdrawal,
+
+    #[msg("Withdrawal is still locked")]
+    WithdrawalLocked,
+
+    #[msg("Not enough unallocated rewards")]
+    InsufficientUnallocated,
+
+    #[msg("Oracle is not registered")]
+    OracleNotRegistered,
+
+    #[msg("Oracle is already registered")]
+    OracleAlreadyActive,
+
+    #[msg("Oracle is still part of the aggregator")]
+    OracleStillActive,
 }
 
 pub mod query {
