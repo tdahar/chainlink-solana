@@ -120,3 +120,10 @@ pub struct RewardDustSwept {
     pub recipient: Pubkey,
     pub amount_gjuels: u64,
 }
+
+#[event]
+pub struct OracleRecordClosed {
+    pub aggregator: Pubkey,
+    pub transmitter: Pubkey,
+    pub claimed_gjuels: u64,
+}

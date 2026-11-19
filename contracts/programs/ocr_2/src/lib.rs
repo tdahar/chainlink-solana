@@ -661,6 +661,10 @@ pub mod ocr_2 {
     pub fn sweep_reward_dust(ctx: Context<SweepRewardDust>) -> Result<()> {
         rewards::sweep_reward_dust(ctx)
     }
+
+    pub fn close_oracle_record(ctx: Context<CloseOracleRecord>) -> Result<()> {
+        rewards::close_oracle_record(ctx)
+    }
 }
 
 fn pay_oracles_impl<'info>(

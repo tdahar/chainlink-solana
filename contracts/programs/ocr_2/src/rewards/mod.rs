@@ -615,3 +615,21 @@ pub mod query {
         })
     }
 }
+
+// -- Cleanup
+
+/// Closes the record of an oracle that left the pool and returns its rent to the transmitter, so
+/// records of rotated-out oracles do not pile up. The oracle can register again later with a fresh
+/// record.
+pub fn close_oracle_record(ctx: Context<CloseOracleRecord>) -> Result<()> {
+    let record = &ctx.accounts.record;
+    require!(!record.active, ErrorCode::OracleStillActive);
+
+    emit!(event::OracleRecordClosed {
+        aggregator: ctx.accounts.pool.aggregator,
+        transmitter: record.transmitter,
+        claimed_gjuels: record.claimed_gjuels,
+    });
+    // NOTE: the account is closed by anchor on exit due to the `close` attribute
+    Ok(())
+}

@@ -301,3 +301,23 @@ impl<'info> SweepRewardDust<'info> {
         )
     }
 }
+
+/// Permissionless: anyone can close the record of a deregistered oracle; the rent goes back to the
+/// oracle's transmitter.
+#[derive(Accounts)]
+pub struct CloseOracleRecord<'info> {
+    #[account(seeds = [REWARD_POOL_SEED, pool.aggregator.as_ref()], bump = pool.bump)]
+    pub pool: Box<Account<'info, RewardPool>>,
+    #[account(
+        mut,
+        close = transmitter,
+        seeds = [ORACLE_REWARD_SEED, pool.key().as_ref(), transmitter.key().as_ref()],
+        bump = record.bump,
+        has_one = pool,
+        has_one = transmitter,
+    )]
+    pub record: Box<Account<'info, OracleRewardRecord>>,
+    /// CHECK: only receives the rent back; must be the record's transmitter (has_one above)
+    #[account(mut)]
+    pub transmitter: UncheckedAccount<'info>,
+}

@@ -35,6 +35,9 @@ in the `ocr_2` program (`contracts/programs/ocr_2/src/rewards/`) and does not ch
    stops diluting the others. It keeps what it earned up to that point and can still claim it (to its
    last known payee). If it joins the aggregator again it calls `reactivate_oracle` and earns from
    that moment on.
+   Once a deregistered oracle has claimed everything it earned, anyone can call
+   `close_oracle_record` to close its record and return the rent to its transmitter; if it joins the
+   aggregator again later it registers with a fresh record.
 7. **Sponsor withdrawals** take two steps. `request_sponsor_withdrawal` reserves an amount (no more
    than the sponsor's outstanding deposits and no more than the pool's unallocated balance) and
    starts the delay; the reserved amount is no longer released to oracles.
