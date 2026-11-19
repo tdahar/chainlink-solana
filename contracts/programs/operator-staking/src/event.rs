@@ -113,3 +113,13 @@ pub struct SlashedWithdrawn {
     pub recipient: Pubkey,
     pub amount: u64,
 }
+
+#[event]
+pub struct Redelegated {
+    pub from_operator: Pubkey,
+    pub to_operator: Pubkey,
+    pub delegator: Pubkey,
+    pub amount: u64,
+    pub shares_burned: u64,
+    pub shares_minted: u64,
+}

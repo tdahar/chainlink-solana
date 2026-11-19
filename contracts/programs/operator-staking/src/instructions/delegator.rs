@@ -155,3 +155,85 @@ fn pay(ctx: &Context<DelegationPayout>, amount: u64) -> Result<()> {
         amount,
     )
 }
+
+/// Moves `shares` worth of delegation from one operator to another of the pool at once: the tokens stay
+/// staked, so there is no unbonding period and no gap in rewards. The destination operator must be active
+/// and have capacity for the amount, and the delegator must have opened a delegation with it.
+pub fn redelegate(ctx: Context<Redelegate>, shares: u64) -> Result<()> {
+    require!(shares > 0, StakingError::InvalidInput);
+    require!(!ctx.accounts.pool.paused, StakingError::PoolPaused);
+    require_keys_neq!(
+        ctx.accounts.from_operator.key(),
+        ctx.accounts.to_operator.key(),
+        StakingError::InvalidInput
+    );
+    require!(
+        ctx.accounts.to_operator.active,
+        StakingError::OperatorInactive
+    );
+    require!(
+        shares <= ctx.accounts.from_delegation.shares,
+        StakingError::InsufficientShares
+    );
+    let now = now()?;
+
+    // Settle both sides at the stake they had before the move.
+    sync(&mut ctx.accounts.pool, &mut ctx.accounts.from_operator, now)?;
+    sync(&mut ctx.accounts.pool, &mut ctx.accounts.to_operator, now)?;
+    settle_delegation(
+        &ctx.accounts.from_operator,
+        &mut ctx.accounts.from_delegation,
+    )?;
+    settle_delegation(&ctx.accounts.to_operator, &mut ctx.accounts.to_delegation)?;
+
+    let from = &mut ctx.accounts.from_operator;
+    let amount = math::amount_for_shares(shares, from.delegated_amount, from.delegated_shares)
+        .ok_or(StakingError::Overflow)?;
+    require!(amount > 0, StakingError::InvalidInput);
+    from.delegated_amount = from
+        .delegated_amount
+        .checked_sub(amount)
+        .ok_or(StakingError::Overflow)?;
+    from.delegated_shares = from
+        .delegated_shares
+        .checked_sub(shares)
+        .ok_or(StakingError::Overflow)?;
+    let from_delegation = &mut ctx.accounts.from_delegation;
+    from_delegation.shares = from_delegation
+        .shares
+        .checked_sub(shares)
+        .ok_or(StakingError::Overflow)?;
+
+    let to = &mut ctx.accounts.to_operator;
+    let capacity = to
+        .delegation_capacity(ctx.accounts.pool.config.max_delegation_ratio)
+        .ok_or(StakingError::Overflow)?;
+    require!(amount <= capacity, StakingError::DelegationCapacityExceeded);
+    let new_shares = math::shares_for_amount(amount, to.delegated_amount, to.delegated_shares)
+        .ok_or(StakingError::Overflow)?;
+    require!(new_shares > 0, StakingError::InvalidInput);
+    to.delegated_amount = to
+        .delegated_amount
+        .checked_add(amount)
+        .ok_or(StakingError::Overflow)?;
+    to.delegated_shares = to
+        .delegated_shares
+        .checked_add(new_shares)
+        .ok_or(StakingError::Overflow)?;
+    let to_delegation = &mut ctx.accounts.to_delegation;
+    to_delegation.shares = to_delegation
+        .shares
+        .checked_add(new_shares)
+        .ok_or(StakingError::Overflow)?;
+
+    // The tokens stay staked in the pool: total_staked does not change.
+    emit!(event::Redelegated {
+        from_operator: ctx.accounts.from_operator.key(),
+        to_operator: ctx.accounts.to_operator.key(),
+        delegator: ctx.accounts.delegator.key(),
+        amount,
+        shares_burned: shares,
+        shares_minted: new_shares,
+    });
+    Ok(())
+}

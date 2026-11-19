@@ -112,6 +112,10 @@ pub mod operator_staking {
         instructions::delegator::claim_delegation_rewards(ctx)
     }
 
+    pub fn redelegate(ctx: Context<Redelegate>, shares: u64) -> Result<()> {
+        instructions::delegator::redelegate(ctx, shares)
+    }
+
     // -- Alerts
 
     pub fn raise_alert(ctx: Context<RaiseAlert>) -> Result<()> {

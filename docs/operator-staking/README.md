@@ -71,6 +71,11 @@ count, so every delegator of the operator loses the same fraction.
   queue.
 - `withdraw_delegation_unbonded` pays the unlocked part of the queue; `claim_delegation_rewards` pays rewards.
 
+`redelegate(shares)` moves a delegation to another operator of the same pool in one step: the tokens stay
+staked, so there is no unbonding period and no gap in rewards. The delegator opens a delegation with the
+destination operator first; the destination must be active and have capacity for the amount. Moving stake to
+an operator of another pool goes through `request_undelegate` and a new `delegate`.
+
 An operator or delegation has at most `MAX_UNBONDING_REQUESTS` (8) requests in flight. A request is unlocked
 once `now >= unlock_ts` and is paid exactly once.
 

@@ -399,3 +399,31 @@ fn payout_ctx<'a, 'b, 'c, 'info>(
         },
     )
 }
+
+/// Moves shares from a delegation to a delegation of another operator of the pool, without unbonding.
+#[derive(Accounts)]
+pub struct Redelegate<'info> {
+    #[account(mut, seeds = [POOL_SEED, pool.feed.as_ref()], bump = pool.bump)]
+    pub pool: Box<Account<'info, StakingPool>>,
+    #[account(mut, has_one = pool)]
+    pub from_operator: Box<Account<'info, Operator>>,
+    #[account(
+        mut,
+        seeds = [DELEGATION_SEED, from_operator.key().as_ref(), delegator.key().as_ref()],
+        bump = from_delegation.bump,
+        constraint = from_delegation.operator == from_operator.key() @ StakingError::InvalidInput,
+        constraint = from_delegation.delegator == delegator.key() @ StakingError::Unauthorized,
+    )]
+    pub from_delegation: Box<Account<'info, Delegation>>,
+    #[account(mut)]
+    pub to_operator: Box<Account<'info, Operator>>,
+    #[account(
+        mut,
+        seeds = [DELEGATION_SEED, to_operator.key().as_ref(), delegator.key().as_ref()],
+        bump = to_delegation.bump,
+        constraint = to_delegation.operator == to_operator.key() @ StakingError::InvalidInput,
+        constraint = to_delegation.delegator == delegator.key() @ StakingError::Unauthorized,
+    )]
+    pub to_delegation: Box<Account<'info, Delegation>>,
+    pub delegator: Signer<'info>,
+}
