@@ -20,6 +20,7 @@ log-read-test = "J1zQwrBNBngz26jRPNWsUSZMHJwBwpkoDitXRV95LdK4"
 mock-ccip-events = "CGn5MQX5GK9qKqERhjnADhd6i2LiSF6XUC2ewUHND1Mw"
 mock_forwarder = "7kuEAA3mSC1Tz8gQjnvH7bKFda9xSPRRin9SZbH49cNK"
 ocr_2 = "E3j24rx12SyVsG6quKuZPbQqZPkhAUCh8Uek4XrKYD2x"
+operator_staking = "9h5WUYEfq6Fuj8wCpXYnCA6EDyzHGae1iwEWLfKJhzhY"
 store = "9kRNTZmoZSiTBuXC62dzK9E7gC7huYgcmRRhYv3i4osC"
 
 [registry]
