@@ -123,3 +123,11 @@ pub struct Redelegated {
     pub shares_burned: u64,
     pub shares_minted: u64,
 }
+
+#[event]
+pub struct Compounded {
+    pub operator: Pubkey,
+    pub delegator: Pubkey,
+    pub amount: u64,
+    pub shares: u64,
+}

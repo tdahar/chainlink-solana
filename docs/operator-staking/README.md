@@ -70,6 +70,9 @@ count, so every delegator of the operator loses the same fraction.
 - `request_undelegate(shares)` burns shares and moves the tokens they are worth into the delegation's unbonding
   queue.
 - `withdraw_delegation_unbonded` pays the unlocked part of the queue; `claim_delegation_rewards` pays rewards.
+- `compound_delegation_rewards` restakes the delegation's unclaimed rewards with the same operator: they join
+  the operator's delegated pool for new shares at the current share price, count as staked from then on and
+  earn rewards like any other stake. It needs the same capacity as a `delegate` of that amount.
 
 `redelegate(shares)` moves a delegation to another operator of the same pool in one step: the tokens stay
 staked, so there is no unbonding period and no gap in rewards. The delegator opens a delegation with the

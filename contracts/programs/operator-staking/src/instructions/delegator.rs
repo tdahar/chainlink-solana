@@ -237,3 +237,51 @@ pub fn redelegate(ctx: Context<Redelegate>, shares: u64) -> Result<()> {
     });
     Ok(())
 }
+
+/// Restakes the delegation's unclaimed rewards with the same operator: they are added to the operator's
+/// delegated pool for new shares at the current share price, and earn from now on. The tokens are already
+/// in the vault, so nothing is transferred.
+pub fn compound_delegation_rewards(ctx: Context<DelegationUpdate>) -> Result<()> {
+    require!(!ctx.accounts.pool.paused, StakingError::PoolPaused);
+    require!(ctx.accounts.operator.active, StakingError::OperatorInactive);
+    let pool = &mut ctx.accounts.pool;
+    let operator = &mut ctx.accounts.operator;
+    let delegation = &mut ctx.accounts.delegation;
+
+    sync(pool, operator, now()?)?;
+    settle_delegation(operator, delegation)?;
+
+    let amount = delegation.pending_rewards;
+    require!(amount > 0, StakingError::InvalidInput);
+    let capacity = operator
+        .delegation_capacity(pool.config.max_delegation_ratio)
+        .ok_or(StakingError::Overflow)?;
+    require!(amount <= capacity, StakingError::DelegationCapacityExceeded);
+
+    let shares =
+        math::shares_for_amount(amount, operator.delegated_amount, operator.delegated_shares)
+            .ok_or(StakingError::Overflow)?;
+    require!(shares > 0, StakingError::InvalidInput);
+
+    delegation.pending_rewards = 0;
+    delegation.shares = delegation
+        .shares
+        .checked_add(shares)
+        .ok_or(StakingError::Overflow)?;
+    operator.delegated_amount = operator
+        .delegated_amount
+        .checked_add(amount)
+        .ok_or(StakingError::Overflow)?;
+    operator.delegated_shares = operator
+        .delegated_shares
+        .checked_add(shares)
+        .ok_or(StakingError::Overflow)?;
+
+    emit!(event::Compounded {
+        operator: operator.key(),
+        delegator: delegation.delegator,
+        amount,
+        shares,
+    });
+    Ok(())
+}
